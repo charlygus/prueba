@@ -37,7 +37,7 @@
                 <div class="col-span-5 p-3">Mesa de Inglés</div>
             </div>
             <div id="gridHorario" class="divide-y divide-slate-200">
-                </div>
+            </div>
         </div>
     </div>
 
@@ -67,19 +67,36 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('diaSelector').addEventListener('change', cargarPlantilla);
+            // Ejecutamos la carga inicial
             cargarPlantilla();
         });
 
         async function cargarPlantilla() {
-            const diaSemana = document.getElementById('diaSelector').value;
-            
-            const { data } = await supabase
-                .from('horario_maestro')
-                .select('*')
-                .eq('dia_semana', diaSemana);
-                
-            datosMaestros = data || [];
+            // 1. FORZAMOS A DIBUJAR LA CUADRÍCULA VACÍA INMEDIATAMENTE
+            datosMaestros = [];
             renderizarGrid();
+
+            // 2. Ahora intentamos conectar con la base de datos sin bloquear la pantalla
+            try {
+                const diaSemana = document.getElementById('diaSelector').value;
+                const { data, error } = await supabase
+                    .from('horario_maestro')
+                    .select('*')
+                    .eq('dia_semana', diaSemana);
+                
+                if (error) {
+                    console.error("Error de Supabase:", error);
+                    return;
+                }
+
+                // Si hay datos guardados, actualizamos la tabla
+                if (data && data.length > 0) {
+                    datosMaestros = data;
+                    renderizarGrid(); 
+                }
+            } catch (err) {
+                console.error("Fallo en la conexión:", err);
+            }
         }
 
         function renderizarGrid() {
@@ -135,21 +152,29 @@
             const diaSemana = document.getElementById('diaSelector').value;
             const { hora, mesa, id } = celdaActiva;
 
-            if (id) {
-                // Actualizar registro existente
-                await supabase.from('horario_maestro')
-                    .update({ alumnos: nuevosAlumnos })
-                    .eq('id', id);
-            } else {
-                // Crear nuevo registro si no existía y se ha escrito algo
-                if (nuevosAlumnos !== "") {
+            // Cambiamos el texto del botón mientras guarda para que sepas que está pensando
+            const btn = document.querySelector('button[onclick="guardarCambiosMaestro()"]');
+            btn.textContent = "Guardando...";
+
+            try {
+                if (id) {
                     await supabase.from('horario_maestro')
-                        .insert([{ dia_semana: diaSemana, hora: hora, mesa: mesa, alumnos: nuevosAlumnos }]);
+                        .update({ alumnos: nuevosAlumnos })
+                        .eq('id', id);
+                } else {
+                    if (nuevosAlumnos !== "") {
+                        await supabase.from('horario_maestro')
+                            .insert([{ dia_semana: diaSemana, hora: hora, mesa: mesa, alumnos: nuevosAlumnos }]);
+                    }
                 }
+            } catch (err) {
+                console.error("Error al guardar:", err);
+                alert("Hubo un error al guardar. Revisa tu conexión a internet.");
             }
 
+            btn.textContent = "Guardar Fijos";
             cerrarModal();
-            cargarPlantilla(); // Recargar para mostrar los cambios
+            cargarPlantilla(); // Recargamos para ver los cambios aplicados
         }
     </script>
 </body>
