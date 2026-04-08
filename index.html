@@ -11,9 +11,11 @@
         :root { --c-primary: #243c7a; --c-sec: #2b94cc; --bg-body: #f4f6f9; }
         body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-body); margin: 0; padding: 15px; }
         .container-cse { width: 95%; max-width: 1600px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(36,60,122,0.08); }
+        
         .web-brand { text-align: center; margin-bottom: 20px; display: flex; flex-direction: column; align-items: center; }
         .web-logo-img { height: 70px; object-fit: contain; }
         .brand-line { height: 5px; width: 80px; margin: 10px auto 0; background: linear-gradient(90deg, var(--c-primary), var(--c-sec), #fa65c3); border-radius: 10px; }
+
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .date-selector { padding: 8px 15px; border: 2px solid #e1e9f0; border-radius: 50px; font-weight: 700; color: var(--c-primary); outline: none; }
         .day-header { text-align: center; margin-bottom: 15px; }
@@ -23,10 +25,10 @@
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         th { background: var(--c-primary); color: white; font-weight: 700; text-transform: uppercase; padding: 10px 2px; font-size: 12px; }
         
-        /* ALTURA FIJA PARA QUE NO SE ENCOJAN */
         td { border-bottom: 1px solid #eee; border-right: 1px solid #eee; padding: 6px; text-align: center; font-size: 11.5px; height: 48px !important; cursor: pointer; }
         td:hover { background-color: #f8fafc; }
         .col-hora { width: 50px; font-weight: 800; color: var(--c-primary); background: #fafafa; }
+        
         .name-tag { pointer-events: none; display: inline-block; padding: 3px 8px; border-radius: 10px; font-weight: 900; text-transform: uppercase; font-size: 10px; color: var(--c-primary); background: rgba(43,148,204,0.1); border: 1px solid rgba(43,148,204,0.3); }
         .tag-modificado { background: #fff3cd; color: #856404; border-color: #ffeeba; }
 
@@ -77,7 +79,13 @@
 <div id="modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 no-print">
     <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl border-t-8 border-blue-600">
         <h3 id="modalTit" class="text-xl font-bold mb-1"></h3>
-        <textarea id="modalInput" rows="5" class="w-full border-2 border-slate-200 rounded-xl p-3 outline-none focus:border-blue-500 font-bold uppercase"></textarea>
+        
+        <label class="block text-[10px] font-bold text-slate-400 uppercase mt-2">Alumnos (separados por comas):</label>
+        <textarea id="modalInput" rows="4" class="w-full border-2 border-slate-200 rounded-xl p-3 outline-none focus:border-blue-500 font-bold uppercase mb-4"></textarea>
+        
+        <label class="block text-[10px] font-bold text-slate-400 uppercase">Motivo del cambio (opcional):</label>
+        <input type="text" id="modalMotivo" class="w-full border-2 border-slate-200 rounded-xl p-2 outline-none focus:border-blue-500 font-bold uppercase" placeholder="Ej: Enfermo, Examen, Recupera...">
+
         <div class="flex justify-end gap-3 mt-6">
             <button onclick="cerrarModal()" class="px-4 py-2 font-bold text-slate-400 uppercase text-xs">Cancelar</button>
             <button id="btnSave" onclick="guardar()" class="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold shadow-lg text-xs">GUARDAR CAMBIOS</button>
@@ -131,21 +139,40 @@
         celdaActiva = { h, m, original: (ex ? ex.alumnos : (ms ? ms.alumnos : '')) };
         document.getElementById('modalTit').innerText = m + " - " + h;
         document.getElementById('modalInput').value = celdaActiva.original;
+        document.getElementById('modalMotivo').value = ''; // Limpiamos motivo
         document.getElementById('modal').classList.replace('hidden', 'flex');
         document.getElementById('modalInput').focus();
     }
     function cerrarModal() { document.getElementById('modal').classList.replace('flex', 'hidden'); }
+    
     async function guardar() {
         const val = document.getElementById('modalInput').value.trim();
+        const motivo = document.getElementById('modalMotivo').value.trim();
         const { h, m, original } = celdaActiva;
         const f = document.getElementById('fechaSelector').value;
         if(val === original) return cerrarModal();
+
+        const antArr = original.split(',').map(s=>s.trim()).filter(s=>s);
+        const nveArr = val.split(',').map(s=>s.trim()).filter(s=>s);
+        const añadidos = nveArr.filter(x => !antArr.includes(x));
+        const quitados = antArr.filter(x => !nveArr.includes(x));
+
+        let msgHistorial = `[${h}-${m}] `;
+        if(añadidos.length > 0) msgHistorial += `Añadido: ${añadidos.join(', ')} `;
+        if(quitados.length > 0) msgHistorial += `${añadidos.length > 0 ? '| ' : ''}Quitado: ${quitados.join(', ')}`;
+        if(añadidos.length === 0 && quitados.length === 0) msgHistorial += `Cambio de orden`;
+        
+        if(motivo) msgHistorial += ` (Motivo: ${motivo})`;
+
         const ex = datosD.find(x => x.hora === h && x.mesa === m);
         if(ex) await miSupabase.from('modificaciones_diarias').update({alumnos: val}).eq('id', ex.id);
         else await miSupabase.from('modificaciones_diarias').insert([{fecha:f, hora:h, mesa:m, alumnos:val}]);
-        await miSupabase.from('historial_movimientos').insert([{fecha_afectada:f, accion:`[${h}-${m}] ${original||'Vacío'} -> ${val||'Vacío'}`}]);
+        
+        await miSupabase.from('historial_movimientos').insert([{fecha_afectada:f, accion: msgHistorial}]);
+        
         cerrarModal(); cargar();
     }
+
     async function cargarHistorial(f) {
         const { data } = await miSupabase.from('historial_movimientos').select('*').eq('fecha_afectada', f).order('fecha_registro', { ascending: false });
         document.getElementById('listaHistorial').innerHTML = data?.map(h => `<li>• ${new Date(h.fecha_registro).toLocaleTimeString()} - ${h.accion}</li>`).join('') || 'Sin cambios';
