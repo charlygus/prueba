@@ -2,173 +2,182 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configurar Horario Maestro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Configurar Horario Maestro - CSE</title>
+    
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/cse-elisagundin/horarios_alumnos/main/image.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
-        .celda-grid { min-height: 80px; transition: all 0.2s; cursor: pointer; }
-        .celda-grid:hover { border-color: #10b981; box-shadow: inset 0 0 0 1px #10b981; }
+        :root { 
+            --c-master: #065f46; --c-secondary: #10b981; --c-accent: #fa65c3;      
+            --bg-body: #f0fdf4; --bg-container: #ffffff;
+        }
+        
+        body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: var(--bg-body); margin: 0; padding: 15px; color: #333; }
+
+        .container-cse { width: 95%; max-width: 1600px; margin: 0 auto; background: var(--bg-container); padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(6, 95, 70, 0.08); }
+
+        .web-brand { text-align: center; margin-bottom: 20px; }
+        .web-logo-img { height: 70px; object-fit: contain; }
+        .brand-line { height: 5px; width: 80px; margin: 10px auto 0; background: linear-gradient(90deg, var(--c-master), var(--c-secondary), var(--c-accent)); border-radius: 10px; }
+
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 15px; flex-wrap: wrap; }
+        
+        .day-selector { padding: 8px 25px; border: 2px solid #d1fae5; border-radius: 50px; font-weight: 700; color: var(--c-master); outline: none; cursor: pointer; background: white;}
+        .day-selector:focus { border-color: var(--c-secondary); }
+
+        .day-header { text-align: center; margin-bottom: 15px; }
+        .day-title { color: var(--c-master); font-size: 32px; font-weight: 900; text-transform: uppercase; margin: 0; letter-spacing: -1px; }
+        .day-subtitle { color: var(--c-secondary); font-size: 14px; font-weight: 700; text-transform: uppercase; margin-top: 2px; }
+
+        .tables-wrapper { display: flex; gap: 20px; align-items: flex-start; }
+        .table-block { flex: 1; background: white; border-radius: 16px; overflow: hidden; border: 1px solid #d1fae5; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        tbody tr { height: 42px; transition: background-color 0.2s; cursor: pointer; }
+        tbody tr:hover { background-color: #f0fdf4; }
+        th, td { border-bottom: 1px solid #ecfdf5; border-right: 1px solid #ecfdf5; padding: 4px; text-align: center; vertical-align: middle; font-size: 11.5px; color: #444; }
+        th { background: var(--c-master); color: white; font-weight: 700; text-transform: uppercase; padding: 10px 2px; }
+        .col-hora { width: 45px; background: white !important; font-weight: 800; color: var(--c-master) !important; border-right: 1px solid #d1fae5; }
+
+        .name-tag { display: inline-block; padding: 4px 10px; border-radius: 12px; font-weight: 900; text-transform: uppercase; color: var(--c-master); background-color: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); }
+
+        @media print {
+            body { zoom: 65%; background: white; }
+            .no-print { display: none !important; }
+            .container-cse { box-shadow: none; border: none; width: 100%; }
+            .table-block { border: 1px solid #000; border-radius: 0; }
+            th { background: #eee !important; color: #000 !important; border: 1px solid #000; }
+            td { border: 1px solid #000 !important; }
+        }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
+<body>
 
-    <div class="max-w-7xl mx-auto">
-        <div class="bg-emerald-800 text-white p-6 rounded-xl shadow-md mb-6">
-            <h1 class="text-2xl font-bold mb-2">⚙️ Modo Edición: Plantilla Base (Horario Maestro)</h1>
-            <p class="text-emerald-100 text-sm">Lo que escribas aquí será tu horario fijo semanal. Hazlo con el Excel al lado para copiar a tus alumnos fijos.</p>
-            
-            <div class="mt-6 flex items-center gap-4 bg-emerald-900/50 p-4 rounded-lg inline-flex">
-                <label class="font-medium text-emerald-50">Día de la semana:</label>
-                <select id="diaSelector" class="bg-white text-slate-900 border border-transparent rounded-lg p-2 font-medium focus:ring-2 focus:ring-emerald-400 outline-none">
-                    <option value="1">Lunes</option>
-                    <option value="2">Martes</option>
-                    <option value="3">Miércoles</option>
-                    <option value="4">Jueves</option>
-                    <option value="5">Viernes</option>
-                </select>
-            </div>
+<div class="container-cse">
+    <header class="no-print">
+        <div class="flex items-center gap-4">
+            <span class="font-bold text-emerald-800">EDITANDO MAESTRO:</span>
+            <select id="diaSelector" class="day-selector">
+                <option value="1">LUNES</option>
+                <option value="2">MARTES</option>
+                <option value="3">MIÉRCOLES</option>
+                <option value="4">JUEVES</option>
+                <option value="5">VIERNES</option>
+            </select>
         </div>
+        <button class="bg-emerald-700 text-white px-6 py-2 rounded-full font-bold text-sm hover:bg-emerald-800" onclick="window.print()">IMPRIMIR PLANTILLA</button>
+    </header>
 
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="grid grid-cols-12 bg-slate-200 text-slate-700 font-bold text-sm text-center">
-                <div class="col-span-2 p-3 border-r border-slate-300">Hora</div>
-                <div class="col-span-5 p-3 border-r border-slate-300">Mesa de Apoyo</div>
-                <div class="col-span-5 p-3">Mesa de Inglés</div>
-            </div>
-            <div id="gridHorario" class="divide-y divide-slate-200">
-            </div>
+    <div class="web-brand no-print">
+        <img src="https://raw.githubusercontent.com/cse-elisagundin/horarios_alumnos/main/image.png" alt="Logo CSE" class="web-logo-img">
+        <div class="brand-line"></div>
+    </div>
+    
+    <div class="day-header">
+        <h2 class="day-title" id="tituloDiaRender">LUNES (MAESTRO)</h2>
+        <div class="day-subtitle">Plantilla Base Semanal</div>
+    </div>
+    
+    <div class="tables-wrapper">
+        <div class="table-block">
+            <div id="tabla-apoyo-container"></div>
+        </div>
+        <div class="table-block">
+            <div id="tabla-ingles-container"></div>
         </div>
     </div>
+</div>
 
-    <div id="modalEdicion" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg mx-4 border-t-4 border-emerald-500">
-            <h3 id="modalTitulo" class="text-xl font-bold text-slate-800 mb-2">Fijar Alumnos</h3>
-            <p class="text-sm text-slate-500 mb-4">Escribe los nombres separados por comas. Estos alumnos quedarán <b>fijos todas las semanas</b> en este día y hora.</p>
-            
-            <textarea id="modalInput" rows="4" class="w-full border border-slate-300 rounded-lg p-3 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" placeholder="Ej: Víctor, Richard, Marc"></textarea>
-            
-            <div class="mt-6 flex justify-end gap-3">
-                <button onclick="cerrarModal()" class="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg">Cancelar</button>
-                <button onclick="guardarCambiosMaestro()" class="px-6 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 shadow-sm">Guardar Fijos</button>
-            </div>
+<div id="modalEdicion" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 no-print">
+    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg mx-4 border-t-4 border-emerald-600">
+        <h3 id="modalTitulo" class="text-xl font-bold text-slate-800 mb-2">Fijar Alumnos Maestros</h3>
+        <p class="text-sm text-slate-500 mb-4">Escribe los alumnos que vienen <b>fijos todas las semanas</b> este día y hora.</p>
+        <textarea id="modalInput" rows="4" class="w-full border border-slate-300 rounded-lg p-3 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"></textarea>
+        <div class="mt-6 flex justify-end gap-3">
+            <button onclick="cerrarModal()" class="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg">Cancelar</button>
+            <button id="btnGuardar" onclick="guardarCambiosMaestro()" class="px-6 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700">Guardar en Plantilla</button>
         </div>
     </div>
+</div>
 
-    <script>
-        const supabaseUrl = 'https://gwqmtvnekjdladdzbhkg.supabase.co';
-        const supabaseKey = 'sb_publishable_SHrC9fPY6flCKKOEygV7TQ_PTKY1N96';
-        const miSupabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+<script>
+    const supabaseUrl = 'https://gwqmtvnekjdladdzbhkg.supabase.co';
+    const supabaseKey = 'sb_publishable_SHrC9fPY6flCKKOEygV7TQ_PTKY1N96';
+    const miSupabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        const horas = ['15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'];
-        let datosMaestros = [];
-        let celdaActiva = { hora: '', mesa: '', id: null };
+    const horas = ['15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'];
+    let datosMaestros = [];
+    let celdaActiva = { hora: '', mesa: '', id: null };
 
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('diaSelector').addEventListener('change', cargarPlantilla);
-            cargarPlantilla();
-        });
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('diaSelector').addEventListener('change', cargarPlantilla);
+        cargarPlantilla();
+    });
 
-        async function cargarPlantilla() {
-            datosMaestros = [];
-            renderizarGrid();
+    async function cargarPlantilla() {
+        const diaNum = document.getElementById('diaSelector').value;
+        const nombres = ["", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES"];
+        document.getElementById('tituloDiaRender').innerText = nombres[diaNum] + " (MAESTRO)";
+        
+        renderizarGridVacia();
+        const { data } = await miSupabase.from('horario_maestro').select('*').eq('dia_semana', diaNum);
+        datosMaestros = data || [];
+        renderizarGrid();
+    }
 
-            try {
-                const diaSemana = document.getElementById('diaSelector').value;
-                const { data, error } = await miSupabase
-                    .from('horario_maestro')
-                    .select('*')
-                    .eq('dia_semana', diaSemana);
-                
-                if (error) {
-                    console.error("Error de Supabase:", error);
-                    return;
-                }
+    function renderizarGridVacia() {
+        let thead = `<thead><tr><th class="col-hora">H</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr></thead>`;
+        let rows = '';
+        horas.forEach(h => rows += `<tr><td class="col-hora">${h}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`);
+        document.getElementById('tabla-apoyo-container').innerHTML = `<table>${thead}<tbody>${rows}</tbody></table>`;
+        document.getElementById('tabla-ingles-container').innerHTML = `<table>${thead}<tbody>${rows}</tbody></table>`;
+    }
 
-                if (data && data.length > 0) {
-                    datosMaestros = data;
-                    renderizarGrid(); 
-                }
-            } catch (err) {
-                console.error("Fallo en la conexión:", err);
-            }
-        }
-
-        function renderizarGrid() {
-            const grid = document.getElementById('gridHorario');
-            grid.innerHTML = '';
-
+    function renderizarGrid() {
+        ['Apoyo', 'Ingles'].forEach(mesa => {
+            let html = `<thead><tr><th class="col-hora">H</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr></thead><tbody>`;
             horas.forEach(hora => {
-                const row = document.createElement('div');
-                row.className = "grid grid-cols-12 bg-white hover:bg-slate-50";
-
-                const colHora = document.createElement('div');
-                colHora.className = "col-span-2 p-3 border-r border-slate-200 flex items-center justify-center font-bold text-slate-500";
-                colHora.textContent = hora;
-                row.appendChild(colHora);
-
-                ['Apoyo', 'Ingles'].forEach(mesa => {
-                    const colMesa = document.createElement('div');
-                    const registro = datosMaestros.find(m => m.hora === hora && m.mesa === mesa);
-                    const alumnosTexto = registro ? registro.alumnos : '';
-                    
-                    const claseBorde = mesa === 'Apoyo' ? 'border-r border-slate-200' : '';
-                    colMesa.className = `col-span-5 p-4 text-sm celda-grid border-b border-transparent ${claseBorde}`;
-                    colMesa.onclick = () => abrirModal(hora, mesa, alumnosTexto, registro ? registro.id : null);
-                    
-                    colMesa.innerHTML = `
-                        <div class="text-slate-800 font-medium">${alumnosTexto || '<span class="text-slate-300 italic">Clic para añadir alumnos fijos...</span>'}</div>
-                    `;
-                    row.appendChild(colMesa);
-                });
-                grid.appendChild(row);
-            });
-        }
-
-        function abrirModal(hora, mesa, alumnosActuales, id) {
-            celdaActiva = { hora, mesa, id };
-            const nombresDias = ["", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
-            const diaNombre = nombresDias[document.getElementById('diaSelector').value];
-            
-            document.getElementById('modalTitulo').textContent = `${diaNombre} - ${hora} (${mesa})`;
-            document.getElementById('modalInput').value = alumnosActuales;
-            document.getElementById('modalEdicion').classList.remove('hidden');
-            document.getElementById('modalEdicion').classList.add('flex');
-            document.getElementById('modalInput').focus();
-        }
-
-        function cerrarModal() {
-            document.getElementById('modalEdicion').classList.add('hidden');
-            document.getElementById('modalEdicion').classList.remove('flex');
-        }
-
-        async function guardarCambiosMaestro() {
-            const nuevosAlumnos = document.getElementById('modalInput').value.trim();
-            const diaSemana = document.getElementById('diaSelector').value;
-            const { hora, mesa, id } = celdaActiva;
-
-            const btn = document.querySelector('button[onclick="guardarCambiosMaestro()"]');
-            btn.textContent = "Guardando...";
-
-            try {
-                if (id) {
-                    await miSupabase.from('horario_maestro')
-                        .update({ alumnos: nuevosAlumnos })
-                        .eq('id', id);
-                } else {
-                    if (nuevosAlumnos !== "") {
-                        await miSupabase.from('horario_maestro')
-                            .insert([{ dia_semana: diaSemana, hora: hora, mesa: mesa, alumnos: nuevosAlumnos }]);
-                    }
+                const reg = datosMaestros.find(m => m.hora === hora && m.mesa === mesa);
+                const txt = reg ? reg.alumnos : '';
+                const arr = txt ? txt.split(',').map(s=>s.trim()).filter(s=>s) : [];
+                html += `<tr onclick="abrirModal('${hora}', '${mesa}', '${txt.replace(/'/g, "\\'")}', ${reg ? reg.id : null})"><td class="col-hora">${hora}</td>`;
+                for(let i=0; i<6; i++) {
+                    html += `<td>${arr[i] ? `<span class="name-tag">${arr[i]}</span>` : ''}</td>`;
                 }
-            } catch (err) {
-                console.error("Error al guardar:", err);
-            }
+                html += `</tr>`;
+            });
+            document.getElementById(`tabla-${mesa.toLowerCase()}-container`).innerHTML = `<table>${html}</tbody></table>`;
+        });
+    }
 
-            btn.textContent = "Guardar Fijos";
-            cerrarModal();
-            cargarPlantilla(); 
+    function abrirModal(hora, mesa, alumnos, id) {
+        celdaActiva = { hora, mesa, id };
+        document.getElementById('modalTitulo').textContent = `${mesa} - ${hora} (Maestro)`;
+        document.getElementById('modalInput').value = alumnos;
+        document.getElementById('modalEdicion').classList.remove('hidden');
+        document.getElementById('modalEdicion').classList.add('flex');
+    }
+
+    function cerrarModal() { document.getElementById('modalEdicion').classList.add('hidden'); document.getElementById('modalEdicion').classList.remove('flex'); }
+
+    async function guardarCambiosMaestro() {
+        const nuevos = document.getElementById('modalInput').value.trim();
+        const dia = document.getElementById('diaSelector').value;
+        const { hora, mesa, id } = celdaActiva;
+        document.getElementById('btnGuardar').innerText = "Guardando...";
+
+        if (id) {
+            await miSupabase.from('horario_maestro').update({ alumnos: nuevos }).eq('id', id);
+        } else if (nuevos !== "") {
+            await miSupabase.from('horario_maestro').insert([{ dia_semana: dia, hora: hora, mesa: mesa, alumnos: nuevos }]);
         }
-    </script>
+        
+        document.getElementById('btnGuardar').innerText = "Guardar en Plantilla";
+        cerrarModal(); cargarPlantilla();
+    }
+</script>
 </body>
 </html>
