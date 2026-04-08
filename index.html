@@ -3,416 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Horario Semanal CSE - Interactivo</title>
-    
+    <title>Horario Diario CSE</title>
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/cse-elisagundin/horarios_alumnos/main/image.png">
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     <style>
-        /* --- ESTILOS GENERALES (WEB) CSE --- */
-        :root { 
-            --c-primary: #243c7a; --c-secondary: #2b94cc; --c-accent: #fa65c3;      
-            --bg-body: #f4f6f9; --bg-container: #ffffff;
-        }
-        
-        body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: var(--bg-body); margin: 0; padding: 15px; color: #333; -webkit-tap-highlight-color: transparent; }
+        :root { --c-primary: #243c7a; --c-sec: #2b94cc; --bg-body: #f4f6f9; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-body); margin: 0; padding: 15px; }
+        .container-cse { width: 95%; max-width: 1600px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(36,60,122,0.08); }
+        /* Logo centrado */
+        .web-brand { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 20px; text-align: center; }
+        .web-logo-img { height: 70px; object-fit: contain; margin: 0 auto; }
+        .brand-line { height: 5px; width: 80px; margin: 10px auto 0; background: linear-gradient(90deg, var(--c-primary), var(--c-sec), #fa65c3); border-radius: 10px; }
 
-        .container-cse { width: 95%; max-width: 1600px; margin: 0 auto; background: var(--bg-container); padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(36, 60, 122, 0.08); }
-
-        /* BRANDING */
-        .web-brand { text-align: center; margin-bottom: 20px; }
-        .web-logo-img { height: 70px; object-fit: contain; }
-        .brand-line { height: 5px; width: 80px; margin: 10px auto 0; background: linear-gradient(90deg, var(--c-primary), var(--c-secondary), var(--c-accent)); border-radius: 10px; }
-
-        /* HEADER Y PANELES DINÁMICOS */
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 15px; flex-wrap: wrap; }
-        .header-left { display: flex; gap: 10px; align-items: center; }
-        
-        .live-info-panel { text-align: right; display: flex; flex-direction: column; gap: 8px; min-width: 250px; }
-        .digital-clock { font-size: 24px; font-weight: 800; color: var(--c-primary); letter-spacing: 1px; text-align: right; }
-
-        .btn-action { padding: 10px 20px; border-radius: 50px; cursor: pointer; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; text-transform: uppercase; transition: transform 0.2s; border: none; }
-        .btn-action:active { transform: scale(0.95); }
-        .btn-print { background-color: var(--c-primary); color: white; border: 2px solid var(--c-primary); }
-        .btn-print:hover { background-color: #1a2e5e; }
-
-        .date-selector { padding: 8px 15px; border: 2px solid #e1e9f0; border-radius: 50px; font-weight: 700; color: var(--c-primary); outline: none; cursor: pointer;}
-        .date-selector:focus { border-color: var(--c-secondary); }
-
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .date-selector { padding: 8px 15px; border: 2px solid #e1e9f0; border-radius: 50px; font-weight: 700; color: var(--c-primary); outline: none; }
         .day-header { text-align: center; margin-bottom: 15px; }
-        .day-title { color: var(--c-primary); font-size: 32px; font-weight: 900; text-transform: uppercase; margin: 0; letter-spacing: -1px; }
-        .day-subtitle { color: var(--c-secondary); font-size: 14px; font-weight: 700; text-transform: uppercase; margin-top: 2px; }
-
-        .planning-container { animation: fadeIn 0.4s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .tables-wrapper { display: flex; gap: 20px; align-items: flex-start; }
-        .table-block { flex: 1; background: white; border-radius: 16px; overflow: hidden; border: 1px solid #dce1e6; box-shadow: 0 0 0 1px #dce1e6; }
-
-        .mobile-section-title { display: none; background: #f0f2f5; color: var(--c-primary); padding: 10px; text-align: center; font-weight: 800; text-transform: uppercase; font-size: 14px; letter-spacing: 1px; border-bottom: 1px solid #dce1e6; }
-        .mobile-section-title.ing { color: var(--c-accent); }
-
+        .day-title { color: var(--c-primary); font-size: 32px; font-weight: 900; text-transform: uppercase; margin: 0; }
+        .tables-wrapper { display: flex; gap: 20px; }
+        .table-block { flex: 1; background: white; border-radius: 16px; overflow: hidden; border: 1px solid #dce1e6; }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        tbody tr { height: 42px; transition: background-color 0.2s; cursor: pointer; }
-        tbody tr:hover { background-color: #f8fafc; }
-        th, td { border-bottom: 1px solid #eee; border-right: 1px solid #eee; padding: 4px; text-align: center; vertical-align: middle; font-size: 11.5px; color: #444; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        th { background: var(--c-primary); color: white; font-weight: 700; text-transform: uppercase; padding: 10px 2px; border: none; border-right: 1px solid rgba(255,255,255,0.1); }
-        th.col-hora { background: white !important; color: var(--c-primary) !important; border-bottom: 2px solid var(--c-primary) !important; }
-        .col-hora { width: 45px; background: white !important; font-weight: 800; color: var(--c-primary) !important; border-right: 1px solid #ddd; }
-
-        .student-cell { font-weight: normal; }
-        .name-tag { display: inline-block; padding: 4px 10px; border-radius: 12px; font-weight: 900; text-transform: uppercase; color: var(--c-primary); background-color: rgba(43, 148, 204, 0.1); border: 1px solid rgba(43, 148, 204, 0.3); }
-        .name-tag.modificado { background-color: #fff3cd; color: #856404; border-color: #ffeeba; }
-
+        th { background: var(--c-primary); color: white; font-weight: 700; text-transform: uppercase; padding: 10px 2px; font-size: 12px; }
+        td { border-bottom: 1px solid #eee; border-right: 1px solid #eee; padding: 6px; text-align: center; font-size: 11.5px; height: 48px; cursor: pointer; }
+        td:hover { background-color: #f8fafc; }
+        .col-hora { width: 50px; font-weight: 800; color: var(--c-primary); background: #fafafa; }
+        /* pointer-events: none para que el clic pase al fondo */
+        .name-tag { pointer-events: none; display: inline-block; padding: 3px 8px; border-radius: 10px; font-weight: 900; text-transform: uppercase; font-size: 10px; color: var(--c-primary); background: rgba(43,148,204,0.1); border: 1px solid rgba(43,148,204,0.3); }
+        .tag-modificado { background: #fff3cd; color: #856404; border-color: #ffeeba; }
+        @media print { @page { size: A4 landscape; margin: 5mm; } body { background: white !important; display: grid !important; grid-template-columns: 58% 40% !important; column-gap: 15px; zoom: 65%; } .no-print { display: none !important; } .container-cse { grid-column: 1; width: 100% !important; box-shadow: none; border: none; padding: 0 !important; } .tables-wrapper { flex-direction: column !important; gap: 10px !important; } .table-block { border: 1px solid #000; border-radius: 0; } table { border: 1px solid #000; } th, td { border: 1px solid #000 !important; color: #000 !important; } .name-tag { background: none !important; border: none !important; font-size: 14px !important; } .print-only-notes { grid-column: 2; display: block !important; border: 2px solid #000; padding: 15px; height: 95vh; } .notes-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; } }
         .print-only-notes { display: none; }
-
-        @media (max-width: 900px) {
-            header { flex-direction: column; align-items: center; }
-            .live-info-panel { text-align: center; width: 100%; }
-            .container-cse { padding: 10px; width: 100%; box-sizing: border-box; }
-            .tables-wrapper { flex-direction: column; gap: 30px; }
-            .table-block { width: 100%; }
-            .mobile-section-title { display: block; }
-            table thead { display: none; }
-            tbody tr { height: auto; display: grid; grid-template-columns: 50px 1fr 1fr 1fr; border-bottom: 2px solid #e0e0e0; }
-            table tbody td.col-hora { grid-row: 1 / 3; grid-column: 1; display: flex; align-items: center; justify-content: center; font-size: 14px; background: white !important; color: var(--c-primary) !important; border-right: 1px solid #eee; }
-            table tbody td:not(.col-hora) { height: 45px; display: flex; align-items: center; justify-content: center; font-size: 13px; border-bottom: 1px solid #f0f0f0; border-right: 1px solid #f0f0f0; white-space: normal; line-height: 1.1; }
-        }
-
-        /* =========================================================================
-            IMPRESIÓN CORREGIDA ORIGINAL: RESTAURADA EXACTAMENTE COMO LA TENÍAS
-           ========================================================================= */
-        @media print {
-            @page { size: A4 landscape; margin: 5mm; } 
-            
-            body { 
-                background: white !important; 
-                margin: 0; padding: 0; 
-                display: grid !important; 
-                grid-template-columns: 58% 40% !important; 
-                column-gap: 15px; 
-                height: 100vh; width: 100%; 
-                overflow: hidden; 
-                zoom: 65%;
-            }
-            
-            .no-print-dynamic, .live-info-panel, .digital-clock, .web-brand, header, .mobile-section-title { 
-                display: none !important; 
-            }
-
-            .container-cse { 
-                grid-column: 1; 
-                width: 100% !important; 
-                margin: 0 !important; 
-                padding: 0 !important; 
-                border: none !important; 
-                box-shadow: none !important; 
-                display: block !important;
-            }
-
-            .planning-container { display: block !important; }
-
-            .tables-wrapper { 
-                display: flex !important; 
-                flex-direction: column !important; 
-                gap: 5px !important; 
-            }
-
-            .table-block { 
-                width: 100% !important; 
-                border: 1px solid #000 !important; 
-                border-radius: 0 !important; 
-                margin: 0 !important;
-                box-shadow: none !important;
-            }
-
-            .print-only-notes { 
-                grid-column: 2; 
-                display: block !important; 
-                width: 100% !important; 
-                height: 98%; 
-                border: none !important; 
-                padding: 15px; 
-                box-sizing: border-box;
-                background: white !important;
-            }
-
-            table { display: table !important; width: 100% !important; border: 1px solid #000 !important; border-collapse: collapse; }
-            tbody tr { display: table-row !important; border-bottom: 1px solid #999; height: auto !important; }
-            td, th { display: table-cell !important; border: 1px solid #999 !important; color: black !important; padding: 1px !important; font-size: 13px !important; }
-            th { font-weight: bold; border-bottom: 2px solid #000 !important; text-transform: uppercase; background: #eee !important; height: 16px; }
-            .col-hora { width: 50px !important; text-align: center !important; white-space: nowrap !important; }
-            
-            .name-tag { 
-                background: transparent !important; color: black !important; border: none !important; 
-                padding: 0 !important; margin: 0 !important; font-weight: 900 !important; 
-                font-size: 15px !important; 
-            }
-
-            .notes-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 10px; }
-            .notes-title { font-size: 24px; font-weight: 900; text-transform: uppercase; color: black; margin: 0; }
-            .notes-logo { height: 40px; filter: grayscale(100%); }
-            
-            .day-header { margin-bottom: 5px !important; text-align: left; }
-            .day-title { font-size: 20px !important; color: black !important; margin: 0; line-height: 1; }
-            .day-subtitle { display: block !important; color: black !important; font-size: 10px !important; margin-top: 2px; font-weight: bold; }
-        }
     </style>
 </head>
 <body>
-
 <div class="container-cse">
-    <header>
-        <div class="header-left">
-            <button class="btn-action btn-print" onclick="window.print()">
-                <svg style="width:18px;height:18px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"></path></svg>
-                IMPRIMIR
-            </button>
+    <header class="no-print">
+        <div class="flex items-center gap-3">
+            <button class="bg-blue-800 text-white px-6 py-2 rounded-full font-bold text-xs" onclick="window.print()">IMPRIMIR HOJA</button>
             <input type="date" id="fechaSelector" class="date-selector">
         </div>
-        
-        <div class="live-info-panel no-print-dynamic">
-            <div id="digital-clock" class="digital-clock">00:00:00</div>
-        </div>
+        <div id="reloj" class="font-bold text-blue-900 text-xl">00:00:00</div>
     </header>
-
-    <div id="view-day" class="planning-container">
-        <div class="web-brand no-print-dynamic">
-            <img src="https://raw.githubusercontent.com/cse-elisagundin/horarios_alumnos/main/image.png" alt="Logo CSE" class="web-logo-img">
-            <div class="brand-line"></div>
-        </div>
-        
-        <div class="day-header">
-            <h2 class="day-title" id="tituloDiaRender">CARGANDO...</h2>
-            <div class="day-subtitle">CSE Elisa Gundín</div>
-        </div>
-        
-        <div class="tables-wrapper">
-            <div class="table-block">
-                <div class="mobile-section-title">Apoyo</div>
-                <div id="tabla-apoyo-container"></div>
-            </div>
-
-            <div class="table-block">
-                <div class="mobile-section-title ing">Inglés</div>
-                <div id="tabla-ingles-container"></div>
-            </div>
-        </div>
+    <div class="web-brand no-print">
+        <img src="https://raw.githubusercontent.com/cse-elisagundin/horarios_alumnos/main/image.png" class="web-logo-img">
+        <div class="brand-line"></div>
     </div>
-
-    <div class="mt-8 bg-white rounded-xl shadow-sm border border-slate-200 p-6 no-print-dynamic">
-        <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            Historial de movimientos para este día
-        </h2>
-        <div class="overflow-y-auto max-h-40 border border-slate-100 rounded-lg bg-slate-50 p-4">
-            <ul id="listaHistorial" class="space-y-2 text-sm font-mono text-slate-600"></ul>
-        </div>
+    <div class="day-header"><h2 class="day-title" id="txtDia">LUNES</h2><div class="text-blue-500 font-bold text-xs">GESTIÓN DIARIA</div></div>
+    <div class="tables-wrapper">
+        <div class="table-block"><div id="cont-apoyo"></div></div>
+        <div class="table-block"><div id="cont-ingles"></div></div>
+    </div>
+    <div class="mt-6 no-print p-4 bg-slate-50 rounded-xl border border-slate-200">
+        <h3 class="text-xs font-bold text-slate-400 uppercase mb-2">Historial de cambios hoy</h3>
+        <ul id="listaHistorial" class="text-[11px] font-mono text-slate-600 space-y-1"></ul>
     </div>
 </div>
-
 <div class="print-only-notes">
-    <div class="notes-header">
-        <h2 class="notes-title">NOTAS</h2>
-        <img src="https://raw.githubusercontent.com/cse-elisagundin/horarios_alumnos/main/image.png" alt="Logo CSE" class="notes-logo">
-    </div>
+    <div class="notes-header"><h2 class="text-2xl font-black">NOTAS</h2><img src="https://raw.githubusercontent.com/cse-elisagundin/horarios_alumnos/main/image.png" style="height:40px"></div>
 </div>
-
-<div id="modalEdicion" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 no-print-dynamic">
-    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg mx-4 border-t-4 border-[#2b94cc]">
-        <h3 id="modalTitulo" class="text-xl font-bold text-slate-800 mb-2">Editar Celda</h3>
-        <p class="text-sm text-slate-500 mb-4">Escribe los alumnos separados por comas. Se distribuirán automáticamente en las columnas.<br><b>El cambio solo aplicará al día de hoy.</b></p>
-        
-        <textarea id="modalInput" rows="4" class="w-full border border-slate-300 rounded-lg p-3 outline-none focus:border-[#2b94cc] focus:ring-1 focus:ring-[#2b94cc]" placeholder="Ej: Víctor, María, Jose..."></textarea>
-        
-        <div class="mt-6 flex justify-end gap-3">
-            <button onclick="cerrarModal()" class="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg">Cancelar</button>
-            <button onclick="guardarCambios()" class="px-6 py-2 bg-[#2b94cc] text-white font-medium rounded-lg hover:bg-[#243c7a] shadow-sm">Guardar Cambios</button>
+<div id="modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 no-print">
+    <div class="bg-white rounded-2xl p-6 w-full max-md shadow-2xl border-t-8 border-blue-600">
+        <h3 id="modalTit" class="text-xl font-bold mb-1"></h3>
+        <p class="text-xs text-slate-500 mb-4">Modifica los alumnos para hoy. No afecta a la plantilla semanal.</p>
+        <textarea id="modalInput" rows="5" class="w-full border-2 border-slate-200 rounded-xl p-3 outline-none focus:border-blue-500 font-bold uppercase"></textarea>
+        <div class="flex justify-end gap-3 mt-6">
+            <button onclick="cerrarModal()" class="px-4 py-2 font-bold text-slate-400 uppercase text-xs">Cancelar</button>
+            <button id="btnSave" onclick="guardar()" class="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold shadow-lg text-xs">GUARDAR CAMBIOS</button>
         </div>
     </div>
 </div>
-
 <script>
     const supabaseUrl = 'https://gwqmtvnekjdladdzbhkg.supabase.co';
     const supabaseKey = 'sb_publishable_SHrC9fPY6flCKKOEygV7TQ_PTKY1N96';
     const miSupabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-
-    const horas = ['15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'];
-    const nombresDias = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"];
-    
-    let datosMaestros = [];
-    let datosDiarios = [];
-    let celdaActiva = { hora: '', mesa: '', alumnosActuales: '' };
-
-    // Reloj Digital
-    setInterval(() => {
-        const now = new Date();
-        document.getElementById('digital-clock').innerText = now.toLocaleTimeString('es-ES', { hour12: false });
-    }, 1000);
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const hoy = new Date().toISOString().split('T')[0];
-        document.getElementById('fechaSelector').value = hoy;
-        document.getElementById('fechaSelector').addEventListener('change', cargarDatosPantalla);
-        cargarDatosPantalla();
-    });
-
-    async function cargarDatosPantalla() {
-        renderizarGridVacia();
-
-        const fechaSeleccionada = document.getElementById('fechaSelector').value;
-        const fechaObj = new Date(fechaSeleccionada);
-        let diaSemanaStr = nombresDias[fechaObj.getDay()];
-        let diaSemanaNum = fechaObj.getDay() === 0 ? 7 : fechaObj.getDay(); 
-        
-        document.getElementById('tituloDiaRender').innerText = diaSemanaStr;
-
-        try {
-            const { data: maestro } = await miSupabase
-                .from('horario_maestro')
-                .select('*')
-                .eq('dia_semana', diaSemanaNum);
-            datosMaestros = maestro || [];
-
-            const { data: diarias } = await miSupabase
-                .from('modificaciones_diarias')
-                .select('*')
-                .eq('fecha', fechaSeleccionada);
-            datosDiarios = diarias || [];
-
-            renderizarGrid();
-            cargarHistorial(fechaSeleccionada);
-        } catch(e) {
-            console.error("Error al conectar:", e);
-        }
+    const horas = ['15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30'];
+    const diasSem = ["DOMINGO","LUNES","MARTES","MIÉRCOLES","JUEVES","VIERNES","SÁBADO"];
+    let datosM = [], datosD = [], celdaActiva = {};
+    setInterval(() => { document.getElementById('reloj').innerText = new Date().toLocaleTimeString(); }, 1000);
+    document.addEventListener('DOMContentLoaded', () => { document.getElementById('fechaSelector').value = new Date().toISOString().split('T')[0]; document.getElementById('fechaSelector').onchange = cargar; cargar(); });
+    async function cargar() {
+        const f = document.getElementById('fechaSelector').value;
+        const fObj = new Date(f);
+        document.getElementById('txtDia').innerText = diasSem[fObj.getDay()];
+        renderGridVacia();
+        const { data: m } = await miSupabase.from('horario_maestro').select('*').eq('dia_semana', fObj.getDay()||7);
+        datosM = m || [];
+        const { data: d } = await miSupabase.from('modificaciones_diarias').select('*').eq('fecha', f);
+        datosD = d || [];
+        renderGrid(); cargarHistorial(f);
     }
-
-    // Dibuja las tablas HTML idénticas a semana.html
-    function renderizarTablas(datosApoyoRows, datosInglesRows) {
-        let thead = `<thead><tr><th class="col-hora">H</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr></thead>`;
-        document.getElementById('tabla-apoyo-container').innerHTML = `<table>${thead}<tbody>${datosApoyoRows}</tbody></table>`;
-        document.getElementById('tabla-ingles-container').innerHTML = `<table>${thead}<tbody>${datosInglesRows}</tbody></table>`;
+    function renderGridVacia() {
+        const h = `<thead><tr><th style="width:50px">H</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr></thead>`;
+        let r = ''; horas.forEach(hr => r += `<tr><td class="col-hora">${hr}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`);
+        document.getElementById('cont-apoyo').innerHTML = `<table>${h}<tbody>${r}</tbody></table>`;
+        document.getElementById('cont-ingles').innerHTML = `<table>${h}<tbody>${r}</tbody></table>`;
     }
-
-    function renderizarGridVacia() {
-        let emptyRows = '';
-        horas.forEach(hora => {
-            emptyRows += `<tr><td class="col-hora">${hora}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+    function renderGrid() {
+        ['Apoyo','Ingles'].forEach(m => {
+            let html = `<thead><tr><th class="col-hora">H</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr></thead><tbody>`;
+            horas.forEach(h => {
+                const ex = datosD.find(x => x.hora === h && x.mesa === m);
+                const ms = datosM.find(x => x.hora === h && x.mesa === m);
+                const txt = ex ? ex.alumnos : (ms ? ms.alumnos : '');
+                const arr = txt ? txt.split(',').map(s=>s.trim()).filter(s=>s) : [];
+                html += `<tr onclick="abrirModal('${h}','${m}')"><td class="col-hora">${h}</td>`;
+                for(let i=0; i<6; i++) html += `<td>${arr[i]?`<span class="name-tag ${ex?'tag-modificado':''}">${arr[i]}</span>`:''}</td>`;
+                html += `</tr>`;
+            });
+            document.getElementById(`cont-${m.toLowerCase()}`).innerHTML = `<table>${html}</tbody></table>`;
         });
-        renderizarTablas(emptyRows, emptyRows);
     }
-
-    function renderizarGrid() {
-        let htmlApoyo = '';
-        let htmlIngles = '';
-
-        horas.forEach(hora => {
-            // Lógica para Mesa de Apoyo
-            const exAp = datosDiarios.find(d => d.hora === hora && d.mesa === 'Apoyo');
-            const msAp = datosMaestros.find(m => m.hora === hora && m.mesa === 'Apoyo');
-            const txtAp = exAp ? exAp.alumnos : (msAp ? msAp.alumnos : '');
-            const arrAp = txtAp ? txtAp.split(',').map(s=>s.trim()).filter(s=>s) : [];
-            const isExAp = exAp ? true : false;
-
-            let rowAp = `<tr onclick="abrirModal('${hora}', 'Apoyo', '${txtAp.replace(/'/g, "\\'")}')"><td class="col-hora">${hora}</td>`;
-            for(let i=0; i<6; i++) {
-                let name = arrAp[i] || '';
-                let etiqueta = name ? `<span class="name-tag ${isExEx ? 'modificado' : ''}">${name}</span>` : '';
-                rowAp += `<td class="student-cell">${etiqueta}</td>`;
-            }
-            rowAp += `</tr>`;
-            htmlApoyo += rowAp;
-
-            // Lógica para Mesa de Inglés
-            const exIng = datosDiarios.find(d => d.hora === hora && d.mesa === 'Ingles');
-            const msIng = datosMaestros.find(m => m.hora === hora && m.mesa === 'Ingles');
-            const txtIng = exIng ? exIng.alumnos : (msIng ? msIng.alumnos : '');
-            const arrIng = txtIng ? txtIng.split(',').map(s=>s.trim()).filter(s=>s) : [];
-            const isExIng = exIng ? true : false;
-
-            let rowIng = `<tr onclick="abrirModal('${hora}', 'Ingles', '${txtIng.replace(/'/g, "\\'")}')"><td class="col-hora">${hora}</td>`;
-            for(let i=0; i<6; i++) {
-                let name = arrIng[i] || '';
-                // Pequeño ajuste para que no falle la clase si existe excepcion
-                let modClass = (isExIng && name) ? 'modificado' : '';
-                let etiqueta = name ? `<span class="name-tag ${modClass}">${name}</span>` : '';
-                rowIng += `<td class="student-cell">${etiqueta}</td>`;
-            }
-            rowIng += `</tr>`;
-            htmlIngles += rowIng;
-        });
-
-        // Correccion pequeña para isExAp arriba
-        htmlApoyo = htmlApoyo.replace(/isExEx/g, 'modificado'); 
-
-        renderizarTablas(htmlApoyo, htmlIngles);
-    }
-
-    function abrirModal(hora, mesa, alumnosActuales) {
-        celdaActiva = { hora, mesa, alumnosActuales };
-        document.getElementById('modalTitulo').textContent = `${mesa} - ${hora}`;
-        document.getElementById('modalInput').value = alumnosActuales;
-        document.getElementById('modalEdicion').classList.remove('hidden');
-        document.getElementById('modalEdicion').classList.add('flex');
+    function abrirModal(h, m) {
+        const ex = datosD.find(x => x.hora === h && x.mesa === m);
+        const ms = datosM.find(x => x.hora === h && x.mesa === m);
+        celdaActiva = { h, m, original: (ex ? ex.alumnos : (ms ? ms.alumnos : '')) };
+        document.getElementById('modalTit').innerText = m + " - " + h;
+        document.getElementById('modalInput').value = celdaActiva.original;
+        document.getElementById('modal').classList.replace('hidden', 'flex');
         document.getElementById('modalInput').focus();
     }
-
-    function cerrarModal() {
-        document.getElementById('modalEdicion').classList.add('hidden');
-        document.getElementById('modalEdicion').classList.remove('flex');
+    function cerrarModal() { document.getElementById('modal').classList.replace('flex', 'hidden'); }
+    async function guardar() {
+        const val = document.getElementById('modalInput').value.trim();
+        const { h, m, original } = celdaActiva;
+        const f = document.getElementById('fechaSelector').value;
+        if(val === original) return cerrarModal();
+        const ex = datosD.find(x => x.hora === h && x.mesa === m);
+        if(ex) await miSupabase.from('modificaciones_diarias').update({alumnos: val}).eq('id', ex.id);
+        else await miSupabase.from('modificaciones_diarias').insert([{fecha:f, hora:h, mesa:m, alumnos:val}]);
+        await miSupabase.from('historial_movimientos').insert([{fecha_afectada:f, accion:`[${h}-${m}] ${original||'Vacío'} -> ${val||'Vacío'}`}]);
+        cerrarModal(); cargar();
     }
-
-    async function guardarCambios() {
-        const nuevosAlumnos = document.getElementById('modalInput').value.trim();
-        const fecha = document.getElementById('fechaSelector').value;
-        const { hora, mesa, alumnosActuales } = celdaActiva;
-
-        if (nuevosAlumnos === alumnosActuales) {
-            cerrarModal(); return; 
-        }
-
-        const excepcionExistente = datosDiarios.find(d => d.hora === hora && d.mesa === mesa);
-        
-        if (excepcionExistente) {
-            await miSupabase.from('modificaciones_diarias')
-                .update({ alumnos: nuevosAlumnos })
-                .eq('id', excepcionExistente.id);
-        } else {
-            await miSupabase.from('modificaciones_diarias')
-                .insert([{ fecha: fecha, hora: hora, mesa: mesa, alumnos: nuevosAlumnos }]);
-        }
-
-        const textoAccion = `[${hora} - ${mesa}] Cambio: De "${alumnosActuales || 'Vacío'}" a "${nuevosAlumnos || 'Vacío'}"`;
-        await miSupabase.from('historial_movimientos')
-            .insert([{ fecha_afectada: fecha, accion: textoAccion }]);
-
-        cerrarModal();
-        cargarDatosPantalla(); 
-    }
-
-    async function cargarHistorial(fecha) {
-        const { data: historial } = await miSupabase
-            .from('historial_movimientos')
-            .select('*')
-            .eq('fecha_afectada', fecha)
-            .order('fecha_registro', { ascending: false });
-
-        const lista = document.getElementById('listaHistorial');
-        lista.innerHTML = '';
-
-        if (!historial || historial.length === 0) {
-            lista.innerHTML = '<li class="text-slate-400 italic">No hay modificaciones manuales registradas para este día.</li>';
-            return;
-        }
-
-        historial.forEach(h => {
-            const li = document.createElement('li');
-            const horaLocal = new Date(h.fecha_registro).toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'});
-            li.innerHTML = `<span class="text-[#2b94cc] font-bold">[${horaLocal}]</span> ${h.accion}`;
-            lista.appendChild(li);
-        });
+    async function cargarHistorial(f) {
+        const { data } = await miSupabase.from('historial_movimientos').select('*').eq('fecha_afectada', f).order('fecha_registro', { ascending: false });
+        document.getElementById('listaHistorial').innerHTML = data?.map(h => `<li>• ${new Date(h.fecha_registro).toLocaleTimeString()} - ${h.accion}</li>`).join('') || 'Sin cambios';
     }
 </script>
 </body>
