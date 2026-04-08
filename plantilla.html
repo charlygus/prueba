@@ -11,9 +11,11 @@
         :root { --c-master: #065f46; --c-sec: #10b981; --bg-body: #f0fdf4; }
         body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-body); margin: 0; padding: 15px; }
         .container-cse { width: 95%; max-width: 1600px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(6,95,70,0.08); }
-        .web-brand { text-align: center; margin-bottom: 20px; }
-        .web-logo-img { height: 70px; object-fit: contain; }
+        /* Logo centrado */
+        .web-brand { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 20px; text-align: center; }
+        .web-logo-img { height: 70px; object-fit: contain; margin: 0 auto; }
         .brand-line { height: 5px; width: 80px; margin: 10px auto 0; background: linear-gradient(90deg, var(--c-master), var(--c-sec), #fa65c3); border-radius: 10px; }
+        
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .day-selector { padding: 8px 25px; border: 2px solid #d1fae5; border-radius: 50px; font-weight: 700; color: var(--c-master); outline: none; cursor: pointer; }
         .day-header { text-align: center; margin-bottom: 15px; }
@@ -25,7 +27,8 @@
         td { border-bottom: 1px solid #ecfdf5; border-right: 1px solid #ecfdf5; padding: 6px; text-align: center; font-size: 11.5px; height: 48px; cursor: pointer; }
         td:hover { background-color: #f0fdf4; }
         .col-hora { width: 50px; font-weight: 800; color: var(--c-master); background: #fafafa; }
-        .name-tag { display: inline-block; padding: 3px 8px; border-radius: 10px; font-weight: 900; text-transform: uppercase; font-size: 10px; color: var(--c-master); background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); }
+        /* pointer-events: none para que el clic pase al fondo */
+        .name-tag { pointer-events: none; display: inline-block; padding: 3px 8px; border-radius: 10px; font-weight: 900; text-transform: uppercase; font-size: 10px; color: var(--c-master); background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); }
         @media print { .no-print { display: none !important; } .container-cse { box-shadow: none; border: none; width: 100%; } table { border: 1px solid #000; } th, td { border: 1px solid #000 !important; color: #000 !important; } .name-tag { background: none !important; border: none !important; font-size: 14px !important; } }
     </style>
 </head>
@@ -91,16 +94,16 @@
                 const reg = datosMaestros.find(x => x.hora === h && x.mesa === m);
                 const txt = reg ? reg.alumnos : '';
                 const arr = txt ? txt.split(',').map(s=>s.trim()).filter(s=>s) : [];
-                html += `<tr onclick="abrirModal('${h}','${m}',${reg?reg.id:null})"><td class="col-hora">${h}</td>`;
+                html += `<tr onclick="abrirModal('${h}','${m}')"><td class="col-hora">${h}</td>`;
                 for(let i=0; i<6; i++) html += `<td>${arr[i]?`<span class="name-tag">${arr[i]}</span>`:''}</td>`;
                 html += `</tr>`;
             });
             document.getElementById(`cont-${m.toLowerCase()}`).innerHTML = `<table>${html}</tbody></table>`;
         });
     }
-    function abrirModal(h, m, id) {
+    function abrirModal(h, m) {
         const reg = datosMaestros.find(x => x.hora === h && x.mesa === m);
-        celdaActiva = { h, m, id };
+        celdaActiva = { h, m, id: reg?reg.id:null };
         document.getElementById('modalTit').innerText = m + " - " + h;
         document.getElementById('modalInput').value = reg ? reg.alumnos : '';
         document.getElementById('modal').classList.replace('hidden', 'flex');
