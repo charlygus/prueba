@@ -1,1 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Horario Inteligente - Academia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Estilos para que parezca una hoja de cálculo limpia */
+        .celda-grid { min-height: 80px; transition: all 0.2s; cursor: pointer; }
+        .celda-grid:hover { border-color: #3b82f6; box-shadow: inset 0 0 0 1px #3b82f6; }
+        .cupo-alerta { background-color: #fee2e2; border-color: #ef4444; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
 
+    <div class="max-w-7xl mx-auto">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900">Panel de Horarios</h1>
+                <p class="text-sm text-slate-500">Gestión de excepciones diarias e historial</p>
+            </div>
+            <div class="mt-4 md:mt-0 flex items-center gap-4">
+                <label class="font-medium text-slate-700">Día a gestionar:</label>
+                <input type="date" id="fechaSelector" class="border border-slate-300 rounded-lg p-2 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+            <div class="grid grid-cols-12 bg-slate-800 text-white font-medium text-sm text-center">
+                <div class="col-span-2 p-3 border-r border-slate-700">Hora</div>
+                <div class="col-span-5 p-3 border-r border-slate-700">Mesa de Apoyo (Máx 6)</div>
+                <div class="col-span-5 p-3">Mesa de Inglés</div>
+            </div>
+            <div id="gridHorario" class="divide-y divide-slate-200">
+                </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Historial de movimientos para este día
+            </h2>
+            <div class="overflow-y-auto max-h-60 border border-slate-100 rounded-lg bg-slate-50 p-4">
+                <ul id="listaHistorial" class="space-y-3 text-sm font-mono text-slate-600">
+                    </ul>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalEdicion" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modalTitulo" class="text-xl font-bold text-slate-800">Editar Celda</h3>
+                <button onclick="cerrarModal()" class="text-slate-400 hover:text-slate-600">✖</button>
+            </div>
+            <p class="text-sm text-slate-500 mb-4">Escribe los nombres de los alumnos separados por comas. Lo que guardes aquí se aplicará <b>solo para este día</b> (excepción diaria).</p>
+            
+            <textarea id="modalInput" rows="4" class="w-full border border-slate-300 rounded-lg p-3 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" placeholder="Ej: Víctor, María, Jose (examen)"></textarea>
+            
+            <div class="mt-6 flex justify-end gap-3">
+                <button onclick="cerrarModal()" class="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg">Cancelar</button>
+                <button onclick="guardarCambios()" class="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 shadow-sm">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración Supabase
+        const supabaseUrl = 'https://gwqmtvnekjdladdzbhkg.supabase.co';
+        const supabaseKey = 'sb_publishable_SHrC9fPY6flCKKOEygV7TQ_PTKY1N96';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Variables Globales
+        const horas = ['16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00'];
+        let datosMaestros = [];
+        let datosDiarios = [];
+        
+        // Variables para el Modal
+        let celdaActiva = { hora: '', mesa: '', alumnosActuales: '' };
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', () => {
+            const hoy = new Date().toISOString().split('T')[0];
+            document.getElementById('fechaSelector').value = hoy;
+            
+            document.getElementById('fechaSelector').addEventListener('change', cargarDatosPantalla);
+            cargarDatosPantalla();
+        });
+
+        // Cargar todo (Maestro + Diarias + Historial)
+        async function cargarDatosPantalla() {
+            const fechaSeleccionada = document.getElementById('fechaSelector').value;
+            const fechaObj = new Date(fechaSeleccionada);
+            let diaSemana = fechaObj.getDay(); 
+            if (diaSemana === 0) diaSemana = 7; // Ajuste para que Domingo sea 7 y Lunes 1
+
+            // 1. Obtener plantilla maestra del día de la semana correspondiente
+            const { data: maestro } = await supabase
+                .from('horario_maestro')
+                .select('*')
+                .eq('dia_semana', diaSemana);
+            datosMaestros = maestro || [];
+
+            // 2. Obtener modificaciones específicas para esta fecha exacta
+            const { data: diarias } = await supabase
+                .from('modificaciones_diarias')
+                .select('*')
+                .eq('fecha', fechaSeleccionada);
+            datosDiarios = diarias || [];
+
+            renderizarGrid();
+            cargarHistorial(fechaSeleccionada);
+        }
+
+        // Dibujar el horario
+        function renderizarGrid() {
+            const grid = document.getElementById('gridHorario');
+            grid.innerHTML = '';
+
+            horas.forEach(hora => {
+                const row = document.createElement('div');
+                row.className = "grid grid-cols-12 bg-white";
+
+                // Columna Hora
+                const colHora = document.createElement('div');
+                colHora.className = "col-span-2 p-3 border-r border-slate-200 flex items-center justify-center font-bold text-slate-500 bg-slate-50";
+                colHora.textContent = hora;
+                row.appendChild(colHora);
+
+                // Columnas Mesas
+                ['Apoyo', 'Ingles'].forEach(mesa => {
+                    const colMesa = document.createElement('div');
+                    
+                    // Buscar si hay excepción diaria, si no, buscar maestro
+                    const excepcion = datosDiarios.find(d => d.hora === hora && d.mesa === mesa);
+                    const maestro = datosMaestros.find(m => m.hora === hora && m.mesa === mesa);
+                    
+                    let alumnosTexto = excepcion ? excepcion.alumnos : (maestro ? maestro.alumnos : '');
+                    let esExcepcion = excepcion ? true : false;
+                    
+                    // Lógica de visualización y cupos
+                    let count = alumnosTexto ? alumnosTexto.split(',').filter(x => x.trim() !== '').length : 0;
+                    let alertaCupo = (mesa === 'Apoyo' && count > 6) ? 'cupo-alerta' : '';
+                    let etiquetaMaestro = esExcepcion ? '<span class="text-[10px] bg-amber-100 text-amber-700 px-1 rounded ml-2 border border-amber-200">Modificado hoy</span>' : '';
+                    let claseBorde = mesa === 'Apoyo' ? 'border-r border-slate-200' : '';
+
+                    colMesa.className = `col-span-5 p-3 text-sm celda-grid border-b border-transparent ${claseBorde} ${alertaCupo} relative`;
+                    colMesa.onclick = () => abrirModal(hora, mesa, alumnosTexto);
+                    
+                    colMesa.innerHTML = `
+                        <div class="flex justify-between items-start mb-1">
+                            <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">${count} alumnos ${etiquetaMaestro}</div>
+                        </div>
+                        <div class="text-slate-700 leading-relaxed">${alumnosTexto || '<span class="text-slate-300 italic">Vacío...</span>'}</div>
+                    `;
+                    row.appendChild(colMesa);
+                });
+
+                grid.appendChild(row);
+            });
+        }
+
+        // Control del Modal
+        function abrirModal(hora, mesa, alumnosActuales) {
+            celdaActiva = { hora, mesa, alumnosActuales };
+            document.getElementById('modalTitulo').textContent = `${mesa} - ${hora}`;
+            document.getElementById('modalInput').value = alumnosActuales;
+            document.getElementById('modalEdicion').classList.remove('hidden');
+            document.getElementById('modalEdicion').classList.add('flex');
+            document.getElementById('modalInput').focus();
+        }
+
+        function cerrarModal() {
+            document.getElementById('modalEdicion').classList.add('hidden');
+            document.getElementById('modalEdicion').classList.remove('flex');
+        }
+
+        // Guardar cambios en BD y generar Historial
+        async function guardarCambios() {
+            const nuevosAlumnos = document.getElementById('modalInput').value.trim();
+            const fecha = document.getElementById('fechaSelector').value;
+            const { hora, mesa, alumnosActuales } = celdaActiva;
+
+            if (nuevosAlumnos === alumnosActuales) {
+                cerrarModal();
+                return; // No hubo cambios
+            }
+
+            // 1. Guardar o actualizar la excepción diaria
+            const excepcionExistente = datosDiarios.find(d => d.hora === hora && d.mesa === mesa);
+            
+            if (excepcionExistente) {
+                await supabase.from('modificaciones_diarias')
+                    .update({ alumnos: nuevosAlumnos })
+                    .eq('id', excepcionExistente.id);
+            } else {
+                await supabase.from('modificaciones_diarias')
+                    .insert([{ fecha: fecha, hora: hora, mesa: mesa, alumnos: nuevosAlumnos }]);
+            }
+
+            // 2. Registrar en el Historial
+            const textoAccion = `[${hora} - ${mesa}] Cambio: De "${alumnosActuales || 'Vacío'}" a "${nuevosAlumnos || 'Vacío'}"`;
+            await supabase.from('historial_movimientos')
+                .insert([{ fecha_afectada: fecha, accion: textoAccion }]);
+
+            cerrarModal();
+            cargarDatosPantalla(); // Recargar todo para ver los cambios
+        }
+
+        // Cargar y renderizar historial
+        async function cargarHistorial(fecha) {
+            const { data: historial } = await supabase
+                .from('historial_movimientos')
+                .select('*')
+                .eq('fecha_afectada', fecha)
+                .order('fecha_registro', { ascending: false });
+
+            const lista = document.getElementById('listaHistorial');
+            lista.innerHTML = '';
+
+            if (!historial || historial.length === 0) {
+                lista.innerHTML = '<li class="text-slate-400 italic">No hay modificaciones manuales registradas para este día.</li>';
+                return;
+            }
+
+            historial.forEach(h => {
+                const li = document.createElement('li');
+                const horaLocal = new Date(h.fecha_registro).toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'});
+                li.innerHTML = `<span class="text-blue-500 font-bold">[${horaLocal}]</span> ${h.accion}`;
+                lista.appendChild(li);
+            });
+        }
+    </script>
+</body>
+</html>
