@@ -56,30 +56,29 @@
     </div>
 
     <script>
-        // Configuración Supabase
+        // === LA SOLUCIÓN AL BLOQUEO ESTÁ AQUÍ ===
         const supabaseUrl = 'https://gwqmtvnekjdladdzbhkg.supabase.co';
         const supabaseKey = 'sb_publishable_SHrC9fPY6flCKKOEygV7TQ_PTKY1N96';
-        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        // Le cambiamos el nombre a la variable para que no colapse el navegador
+        const miSupabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        const horas = ['16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00'];
+        const horas = ['16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'];
         let datosMaestros = [];
         let celdaActiva = { hora: '', mesa: '', id: null };
 
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('diaSelector').addEventListener('change', cargarPlantilla);
-            // Ejecutamos la carga inicial
             cargarPlantilla();
         });
 
         async function cargarPlantilla() {
-            // 1. FORZAMOS A DIBUJAR LA CUADRÍCULA VACÍA INMEDIATAMENTE
+            // Dibujamos la cuadrícula al instante
             datosMaestros = [];
             renderizarGrid();
 
-            // 2. Ahora intentamos conectar con la base de datos sin bloquear la pantalla
             try {
                 const diaSemana = document.getElementById('diaSelector').value;
-                const { data, error } = await supabase
+                const { data, error } = await miSupabase
                     .from('horario_maestro')
                     .select('*')
                     .eq('dia_semana', diaSemana);
@@ -89,7 +88,6 @@
                     return;
                 }
 
-                // Si hay datos guardados, actualizamos la tabla
                 if (data && data.length > 0) {
                     datosMaestros = data;
                     renderizarGrid(); 
@@ -152,29 +150,27 @@
             const diaSemana = document.getElementById('diaSelector').value;
             const { hora, mesa, id } = celdaActiva;
 
-            // Cambiamos el texto del botón mientras guarda para que sepas que está pensando
             const btn = document.querySelector('button[onclick="guardarCambiosMaestro()"]');
             btn.textContent = "Guardando...";
 
             try {
                 if (id) {
-                    await supabase.from('horario_maestro')
+                    await miSupabase.from('horario_maestro')
                         .update({ alumnos: nuevosAlumnos })
                         .eq('id', id);
                 } else {
                     if (nuevosAlumnos !== "") {
-                        await supabase.from('horario_maestro')
+                        await miSupabase.from('horario_maestro')
                             .insert([{ dia_semana: diaSemana, hora: hora, mesa: mesa, alumnos: nuevosAlumnos }]);
                     }
                 }
             } catch (err) {
                 console.error("Error al guardar:", err);
-                alert("Hubo un error al guardar. Revisa tu conexión a internet.");
             }
 
             btn.textContent = "Guardar Fijos";
             cerrarModal();
-            cargarPlantilla(); // Recargamos para ver los cambios aplicados
+            cargarPlantilla(); 
         }
     </script>
 </body>
