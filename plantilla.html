@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurar Horario Maestro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .celda-grid { min-height: 80px; transition: all 0.2s; cursor: pointer; }
+        .celda-grid:hover { border-color: #10b981; box-shadow: inset 0 0 0 1px #10b981; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <div class="bg-emerald-800 text-white p-6 rounded-xl shadow-md mb-6">
+            <h1 class="text-2xl font-bold mb-2">⚙️ Modo Edición: Plantilla Base (Horario Maestro)</h1>
+            <p class="text-emerald-100 text-sm">Lo que escribas aquí será tu horario fijo semanal. Hazlo con el Excel al lado para copiar a tus alumnos fijos.</p>
+            
+            <div class="mt-6 flex items-center gap-4 bg-emerald-900/50 p-4 rounded-lg inline-flex">
+                <label class="font-medium text-emerald-50">Día de la semana:</label>
+                <select id="diaSelector" class="bg-white text-slate-900 border border-transparent rounded-lg p-2 font-medium focus:ring-2 focus:ring-emerald-400 outline-none">
+                    <option value="1">Lunes</option>
+                    <option value="2">Martes</option>
+                    <option value="3">Miércoles</option>
+                    <option value="4">Jueves</option>
+                    <option value="5">Viernes</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="grid grid-cols-12 bg-slate-200 text-slate-700 font-bold text-sm text-center">
+                <div class="col-span-2 p-3 border-r border-slate-300">Hora</div>
+                <div class="col-span-5 p-3 border-r border-slate-300">Mesa de Apoyo</div>
+                <div class="col-span-5 p-3">Mesa de Inglés</div>
+            </div>
+            <div id="gridHorario" class="divide-y divide-slate-200">
+            </div>
+        </div>
+    </div>
+
+    <div id="modalEdicion" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg mx-4 border-t-4 border-emerald-500">
+            <h3 id="modalTitulo" class="text-xl font-bold text-slate-800 mb-2">Fijar Alumnos</h3>
+            <p class="text-sm text-slate-500 mb-4">Escribe los nombres separados por comas. Estos alumnos quedarán <b>fijos todas las semanas</b> en este día y hora.</p>
+            
+            <textarea id="modalInput" rows="4" class="w-full border border-slate-300 rounded-lg p-3 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" placeholder="Ej: Víctor, Richard, Marc"></textarea>
+            
+            <div class="mt-6 flex justify-end gap-3">
+                <button onclick="cerrarModal()" class="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg">Cancelar</button>
+                <button onclick="guardarCambiosMaestro()" class="px-6 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 shadow-sm">Guardar Fijos</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://gwqmtvnekjdladdzbhkg.supabase.co';
+        const supabaseKey = 'sb_publishable_SHrC9fPY6flCKKOEygV7TQ_PTKY1N96';
+        const miSupabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        const horas = ['15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'];
+        let datosMaestros = [];
+        let celdaActiva = { hora: '', mesa: '', id: null };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('diaSelector').addEventListener('change', cargarPlantilla);
+            cargarPlantilla();
+        });
+
+        async function cargarPlantilla() {
+            datosMaestros = [];
+            renderizarGrid();
+
+            try {
+                const diaSemana = document.getElementById('diaSelector').value;
+                const { data, error } = await miSupabase
+                    .from('horario_maestro')
+                    .select('*')
+                    .eq('dia_semana', diaSemana);
+                
+                if (error) {
+                    console.error("Error de Supabase:", error);
+                    return;
+                }
+
+                if (data && data.length > 0) {
+                    datosMaestros = data;
+                    renderizarGrid(); 
+                }
+            } catch (err) {
+                console.error("Fallo en la conexión:", err);
+            }
+        }
+
+        function renderizarGrid() {
+            const grid = document.getElementById('gridHorario');
+            grid.innerHTML = '';
+
+            horas.forEach(hora => {
+                const row = document.createElement('div');
+                row.className = "grid grid-cols-12 bg-white hover:bg-slate-50";
+
+                const colHora = document.createElement('div');
+                colHora.className = "col-span-2 p-3 border-r border-slate-200 flex items-center justify-center font-bold text-slate-500";
+                colHora.textContent = hora;
+                row.appendChild(colHora);
+
+                ['Apoyo', 'Ingles'].forEach(mesa => {
+                    const colMesa = document.createElement('div');
+                    const registro = datosMaestros.find(m => m.hora === hora && m.mesa === mesa);
+                    const alumnosTexto = registro ? registro.alumnos : '';
+                    
+                    const claseBorde = mesa === 'Apoyo' ? 'border-r border-slate-200' : '';
+                    colMesa.className = `col-span-5 p-4 text-sm celda-grid border-b border-transparent ${claseBorde}`;
+                    colMesa.onclick = () => abrirModal(hora, mesa, alumnosTexto, registro ? registro.id : null);
+                    
+                    colMesa.innerHTML = `
+                        <div class="text-slate-800 font-medium">${alumnosTexto || '<span class="text-slate-300 italic">Clic para añadir alumnos fijos...</span>'}</div>
+                    `;
+                    row.appendChild(colMesa);
+                });
+                grid.appendChild(row);
+            });
+        }
+
+        function abrirModal(hora, mesa, alumnosActuales, id) {
+            celdaActiva = { hora, mesa, id };
+            const nombresDias = ["", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+            const diaNombre = nombresDias[document.getElementById('diaSelector').value];
+            
+            document.getElementById('modalTitulo').textContent = `${diaNombre} - ${hora} (${mesa})`;
+            document.getElementById('modalInput').value = alumnosActuales;
+            document.getElementById('modalEdicion').classList.remove('hidden');
+            document.getElementById('modalEdicion').classList.add('flex');
+            document.getElementById('modalInput').focus();
+        }
+
+        function cerrarModal() {
+            document.getElementById('modalEdicion').classList.add('hidden');
+            document.getElementById('modalEdicion').classList.remove('flex');
+        }
+
+        async function guardarCambiosMaestro() {
+            const nuevosAlumnos = document.getElementById('modalInput').value.trim();
+            const diaSemana = document.getElementById('diaSelector').value;
+            const { hora, mesa, id } = celdaActiva;
+
+            const btn = document.querySelector('button[onclick="guardarCambiosMaestro()"]');
+            btn.textContent = "Guardando...";
+
+            try {
+                if (id) {
+                    await miSupabase.from('horario_maestro')
+                        .update({ alumnos: nuevosAlumnos })
+                        .eq('id', id);
+                } else {
+                    if (nuevosAlumnos !== "") {
+                        await miSupabase.from('horario_maestro')
+                            .insert([{ dia_semana: diaSemana, hora: hora, mesa: mesa, alumnos: nuevosAlumnos }]);
+                    }
+                }
+            } catch (err) {
+                console.error("Error al guardar:", err);
+            }
+
+            btn.textContent = "Guardar Fijos";
+            cerrarModal();
+            cargarPlantilla(); 
+        }
+    </script>
+</body>
+</html>
